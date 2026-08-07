@@ -58,12 +58,14 @@ ASM_FUNCTION start_itcm
 	mcr p15, 0, r0, c1, c0, 0
 
 
-	@ Map SDIO3 to use the SD card and be accessible from the ARM11
+	@ Map SDIO3 to use the SD card and be accessible from the ARM11,
+	@ and make sure the WiFi SDIO power (bit2, 1=off) is on
 	ldr r0, =0x10000000
 
 	ldr r1, [r0, #0x20]
 	orr r1, r1, #(1 << 8)
 	bic r1, r1, #(1 << 9)
+	bic r1, r1, #(1 << 2)
 	str r1, [r0, #0x20]
 
 
@@ -72,6 +74,24 @@ ASM_FUNCTION start_itcm
 	ldrh r1, [r0]
 	orr r1, r1, #((1 << 4) | (1 << 5))
 	strh r1, [r0]
+
+
+	@ Power on the WiFi subsystem (CFG11_WIFICNT bit0) so the AR6014
+	@ SDIO chip is alive for the ARM11 nwm controller to enumerate
+	ldr r0, =0x10140180
+	ldrb r1, [r0]
+	orr r1, r1, #(1 << 0)
+	strb r1, [r0]
+
+
+	@ Assert the WiFi-Enable GPIO (bit0).
+	@ This is the external chip-enable HOS's NWM relies on but never sets
+	@ itself.  Per wifiboot it is "needed, else CMDTIMEOUT upon CMD5", which
+	@ I can replicate.
+	ldr r0, =0x10147028
+	ldr r1, [r0]
+	orr r1, r1, #(1 << 0)
+	str r1, [r0]
 
 
 	@ Branch to C code
